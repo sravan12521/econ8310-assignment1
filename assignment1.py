@@ -8,9 +8,6 @@ from statsmodels.tsa.holtwinters import ExponentialSmoothing
 train_path = r" https://github.com/dustywhite7/econ8310-assignment1/raw/main/assignment_data_train.csv"
 test_path = r"https://github.com/dustywhite7/econ8310-assignment1/raw/main/assignment_data_test.csv"
 
-# Check if files exist
-if not os.path.exists(train_path) or not os.path.exists(test_path):
-    raise FileNotFoundError("Training or test dataset is missing!")
 
 # Load the training dataset
 df_train = pd.read_csv(train_path, parse_dates=['Timestamp'], index_col='Timestamp')
