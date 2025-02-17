@@ -2,16 +2,15 @@ import pandas as pd
 import numpy as np
 import pickle
 import os
-from statsmodels.tsa.arima.model import ARIMA
-from statsmodels.tsa.stattools import adfuller
+from statsmodels.tsa.holtwinters import ExponentialSmoothing
 
 # Define file paths
-train_path = r"https://github.com/dustywhite7/econ8310-assignment1/raw/main/assignment_data_train.csv"
-test_path = r" https://github.com/dustywhite7/econ8310-assignment1/raw/main/assignment_data_test.csv"
+train_path = r" https://github.com/dustywhite7/econ8310-assignment1/raw/main/assignment_data_train.csv"
+test_path = r"https://github.com/dustywhite7/econ8310-assignment1/raw/main/assignment_data_test.csv"
 
-'''# Check if files exist
+# Check if files exist
 if not os.path.exists(train_path) or not os.path.exists(test_path):
-    raise FileNotFoundError("Training or test dataset is missing!")'''
+    raise FileNotFoundError("Training or test dataset is missing!")
 
 # Load the training dataset
 df_train = pd.read_csv(train_path, parse_dates=['Timestamp'], index_col='Timestamp')
@@ -25,14 +24,8 @@ df_train['trips'] = df_train['trips'].astype(float)
 # Check for missing values and forward fill
 df_train = df_train.ffill()
 
-# Ensure stationarity (ARIMA requires stationary data)
-result = adfuller(df_train['trips'])
-if result[1] > 0.05:
-    print("Data is non-stationary, differencing will be applied")
-    df_train['trips'] = df_train['trips'].diff().dropna()
-
-# Fit an ARIMA model (p=2, d=1, q=2) as a starting point
-model = ARIMA(df_train['trips'], order=(2,1,2))
+# Fit an Exponential Smoothing model
+model = ExponentialSmoothing(df_train['trips'], trend='add', seasonal='add', seasonal_periods=24)
 modelFit = model.fit()
 
 # Save the model to disk for future predictions
