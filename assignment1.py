@@ -5,8 +5,8 @@ import os
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
 
 # Define file paths
-train_path = r"C:\Users\sveerannagari\Desktop\assignment 1\econ8310-assignment1\assignment_data_train.csv"
-test_path = r"C:\Users\sveerannagari\Desktop\assignment 1\econ8310-assignment1\assignment_data_test.csv"
+train_path = r"https://github.com/dustywhite7/econ8310-assignment1/raw/main/assignment_data_train.csv"
+test_path = r" https://github.com/dustywhite7/econ8310-assignment1/raw/main/assignment_data_test.csv"
 
 # Check if files exist
 print("Checking if training file exists:", os.path.exists(train_path))
