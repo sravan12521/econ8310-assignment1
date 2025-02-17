@@ -24,8 +24,11 @@ df_train = df_train.ffill()
 # Normalize time index (improves GAM performance)
 df_train['time_index'] = (df_train.index - df_train.index.min()).total_seconds() / 3600
 
-# Fit an Optimized Generalized Additive Model (GAM) with more smoothing terms
-model = LinearGAM(s(0) + s(1)).fit(df_train[['time_index']], df_train['trips'])
+# Convert time_index to 2D array
+X_train = df_train[['time_index']].values  # Ensure correct shape
+
+# Fit a Generalized Additive Model (GAM)
+model = LinearGAM(s(0)).fit(X_train, df_train['trips'])
 
 # Save the model to disk for future predictions
 with open("model.pkl", "wb") as f:
@@ -35,7 +38,7 @@ with open("model.pkl", "wb") as f:
 df_test = pd.read_csv(test_path, parse_dates=['Timestamp'], index_col='Timestamp')
 
 # Generate future time indexes
-future_time_index = np.arange(df_train['time_index'].max() + 1, df_train['time_index'].max() + 745)
+future_time_index = np.arange(df_train['time_index'].max() + 1, df_train['time_index'].max() + 745).reshape(-1, 1)
 
 # Make predictions
 pred = model.predict(future_time_index)
