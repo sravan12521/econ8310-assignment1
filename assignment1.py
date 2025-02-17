@@ -31,7 +31,7 @@ if result[1] > 0.05:
     print("Data is non-stationary, differencing will be applied")
     df_train['trips'] = df_train['trips'].diff().dropna()
 
-# Fit an ARIMA model (p=2, d=1, q=2 as a starting point)
+# Fit an ARIMA model (p=2, d=1, q=2) as a starting point
 model = ARIMA(df_train['trips'], order=(2,1,2))
 modelFit = model.fit()
 
@@ -49,7 +49,7 @@ df_test = df_test.asfreq('h')
 pred = modelFit.forecast(steps=744)
 
 # Convert predictions to a DataFrame and save them
-pred = pd.DataFrame(pred, index=pd.date_range(start=df_test.index[-1], periods=744, freq="h"), columns=['trips'])
+pred = pd.DataFrame(pred, index=pd.date_range(start=df_test.index[-1] + pd.Timedelta(hours=1), periods=744, freq="h"), columns=['trips'])
 pred.to_csv("predictions.csv")
 
 print("Forecasting complete. Predictions saved to 'predictions.csv'.")
