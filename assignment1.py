@@ -1,50 +1,57 @@
 import pandas as pd
 import numpy as np
+from statsmodels.tsa.api import ExponentialSmoothing
 import pickle
-import os
-from pygam import LinearGAM, s
+import matplotlib.pyplot as plt
 
-# Define file paths
-train_path = r"https://github.com/dustywhite7/econ8310-assignment1/raw/main/assignment_data_train.csv"
-test_path = r"https://github.com/dustywhite7/econ8310-assignment1/raw/main/assignment_data_test.csv"
+# URLs for training and testing datasets
+train_data_url = "https://github.com/dustywhite7/econ8310-assignment1/raw/main/assignment_data_train.csv"
+test_data_url = "https://github.com/dustywhite7/econ8310-assignment1/raw/main/assignment_data_test.csv"
 
-'''# Check if files exist
-if not os.path.exists(train_path) or not os.path.exists(test_path):
-    raise FileNotFoundError("Training or test dataset is missing!")'''
+# Load and preprocess training data
+train_df = pd.read_csv(train_data_url)
+if 'Timestamp' in train_df.columns:
+    train_df.rename(columns={'Timestamp': 'timestamp'}, inplace=True)
 
-# Load the training dataset
-df_train = pd.read_csv(train_path, parse_dates=['Timestamp'], index_col='Timestamp')
+train_df['timestamp'] = pd.to_datetime(train_df['timestamp'])
+train_df.set_index('timestamp', inplace=True)
+train_df = train_df.asfreq('h')
 
-# Convert trips column to float64
-df_train['trips'] = df_train['trips'].astype(float)
+# Define target variable
+target_series = train_df['trips']
 
-# Handle missing values
-df_train = df_train.ffill()
+# === Exponential Smoothing Model === #
+es_model = ExponentialSmoothing(target_series, seasonal='add', seasonal_periods=24)
+es_fitted = es_model.fit()
 
-# Normalize time index (improves GAM performance)
-df_train['time_index'] = (df_train.index - df_train.index.min()).total_seconds() / 3600
+# Save trained model to file
+with open("trained_model.pkl", "wb") as model_file:
+    pickle.dump(es_fitted, model_file)
 
-# Convert time_index to 2D array
-X_train = df_train[['time_index']].values  # Ensure correct shape
+# Load and preprocess testing data
+test_df = pd.read_csv(test_data_url)
+if 'Timestamp' in test_df.columns:
+    test_df.rename(columns={'Timestamp': 'timestamp'}, inplace=True)
 
-# Fit a Generalized Additive Model (GAM)
-model = LinearGAM(s(0)).fit(X_train, df_train['trips'])
+test_df['timestamp'] = pd.to_datetime(test_df['timestamp'])
+test_df.set_index('timestamp', inplace=True)
+test_df = test_df.asfreq('h')
 
-# Save the model to disk for future predictions
-with open("model.pkl", "wb") as f:
-    pickle.dump(model, f)
+# Generate forecast for 744 time steps (January of the next year)
+predictions = es_fitted.forecast(steps=744)
 
-# Load the test dataset
-df_test = pd.read_csv(test_path, parse_dates=['Timestamp'], index_col='Timestamp')
+# Save predictions
+predictions.to_csv("forecasted_trips.csv")
+print("Model training and forecasting completed successfully!")
 
-# Generate future time indexes
-future_time_index = np.arange(df_train['time_index'].max() + 1, df_train['time_index'].max() + 745).reshape(-1, 1)
+# Load and visualize predictions
+forecasted_df = pd.read_csv("forecasted_trips.csv", index_col=0)
+forecasted_df.index = pd.to_datetime(forecasted_df.index)
 
-# Make predictions
-pred = model.predict(future_time_index)
-
-# Convert predictions to a DataFrame and save them
-pred = pd.DataFrame(pred, index=pd.date_range(start=df_test.index[-1] + pd.Timedelta(hours=1), periods=744, freq="h"), columns=['trips'])
-pred.to_csv("predictions.csv", index=False)
-
-print("Forecasting complete. Predictions saved to 'predictions.csv'.")
+plt.figure(figsize=(12, 6))
+plt.plot(forecasted_df, label="Predicted Taxi Trips", color='blue')
+plt.xlabel("Time")
+plt.ylabel("Number of Trips")
+plt.title("Taxi Trip Forecast for January")
+plt.legend()
+plt.show()
