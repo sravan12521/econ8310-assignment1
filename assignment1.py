@@ -1,52 +1,59 @@
 import pandas as pd
 import numpy as np
-from statsmodels.tsa.holtwinters import ExponentialSmoothing
+from statsmodels.tsa.api import ExponentialSmoothing
+from statsmodels.tsa.statespace.varmax import VARMAX
 import pickle
-import matplotlib.pyplot as plt
 
-# Define dataset URLs
-train_data_url = "https://github.com/dustywhite7/econ8310-assignment1/raw/main/assignment_data_train.csv"
-test_data_url = "https://github.com/dustywhite7/econ8310-assignment1/raw/main/assignment_data_test.csv"
+# Load training data
+train_url = "https://github.com/dustywhite7/econ8310-assignment1/raw/main/assignment_data_train.csv"
+train_data = pd.read_csv(train_url)
 
-# Load training dataset
-train_df = pd.read_csv(train_data_url)
-train_df.rename(columns={'Timestamp': 'timestamp'}, inplace=True)
-train_df['timestamp'] = pd.to_datetime(train_df['timestamp'])
-train_df.set_index('timestamp', inplace=True)
-train_df = train_df.asfreq('h')
+# Load test data
+test_url = "https://github.com/dustywhite7/econ8310-assignment1/raw/main/assignment_data_test.csv"
+test_data = pd.read_csv(test_url)
 
-# Define the target variable
-target_series = train_df['trips']
+# Ensure correct timestamp column name
+if 'Timestamp' in train_data.columns:
+    train_data.rename(columns={'Timestamp': 'timestamp'}, inplace=True)
 
-# Train an Exponential Smoothing Model
-model = ExponentialSmoothing(target_series, seasonal='add', seasonal_periods=24).fit()
+# Convert timestamp column to datetime format and set as index
+train_data['timestamp'] = pd.to_datetime(train_data['timestamp'])
+train_data.set_index('timestamp', inplace=True)
+
+# Ensure dataset follows an hourly frequency
+train_data = train_data.asfreq('h')
+
+# Select the dependent variable (number of taxi trips)
+y_train = train_data['trips']
+
+# === OPTION 1: Exponential Smoothing Model === #
+model = ExponentialSmoothing(y_train, seasonal='add', seasonal_periods=24)
+modelFit = model.fit()
 
 # Save the trained model
-with open("taxi_trip_model.pkl", "wb") as model_file:
-    pickle.dump(model, model_file)
+with open("model.pkl", "wb") as f:
+    pickle.dump(modelFit, f)
 
-# Load test dataset
-test_df = pd.read_csv(test_data_url)
-test_df.rename(columns={'Timestamp': 'timestamp'}, inplace=True)
-test_df['timestamp'] = pd.to_datetime(test_df['timestamp'])
-test_df.set_index('timestamp', inplace=True)
-test_df = test_df.asfreq('h')
 
-# Generate predictions for the next 744 hours (one month)
-predictions = model.forecast(steps=744)
+# Ensure correct timestamp column name in test data
+if 'Timestamp' in test_data.columns:
+    test_data.rename(columns={'Timestamp': 'timestamp'}, inplace=True)
 
-# Save predictions to a CSV file
-predictions.to_csv("predicted_taxi_trips.csv")
-print("Model training and forecasting completed successfully!")
+# Convert test timestamp column to datetime format and set as index
+test_data['timestamp'] = pd.to_datetime(test_data['timestamp'])
+test_data.set_index('timestamp', inplace=True)
+test_data = test_data.asfreq('h')
 
-# Load and visualize predictions
-forecasted_df = pd.read_csv("predicted_taxi_trips.csv", index_col=0)
-forecasted_df.index = pd.to_datetime(forecasted_df.index)
+# Forecast for 744 hours (January of next year)
+pred = modelFit.forecast(steps=744)
 
-plt.figure(figsize=(12, 6))
-plt.plot(forecasted_df, label="Predicted Taxi Trips", color='blue')
-plt.xlabel("Time")
-plt.ylabel("Number of Trips")
-plt.title("Predicted Taxi Trips for January")
-plt.legend()
-plt.show()
+# Save predictions
+pred.to_csv("predictions.csv")
+
+print("Model training and prediction completed successfully!")
+
+import matplotlib.pyplot as plt
+
+# Load predictions
+pred = pd.read_csv("predictions.csv", index_col=0)
+pred.index = pd.to_datetime(pred.index)
